@@ -25,15 +25,16 @@
 (function () {
   'use strict';
   var COL = 'onboarding_members';
+  var MS_COL = 'onboarding_milestones';
   var PPTX_CDN = 'https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js';
 
-  var MILESTONES = [
-    { key: 'm01', num: '01', zh: '接受錄取通知', en: 'Offer accepted' },
-    { key: 'm02', num: '02', zh: '報到前準備', en: 'Pre-readiness' },
-    { key: 'm03', num: '03', zh: '正式報到日', en: 'On-board date' },
-    { key: 'm04', num: '04', zh: '正式就緒培訓', en: 'Official readiness' },
-    { key: 'm05', num: '05', zh: '承接首個案件', en: 'First case taken' },
-    { key: 'm06', num: '06', zh: '加入日常輪班', en: 'Join daily shift' }
+  var DEFAULT_MILESTONES = [
+    { id: 'm01', order: 1, zh: '接受錄取通知', en: 'Offer accepted' },
+    { id: 'm02', order: 2, zh: '報到前準備', en: 'Pre-readiness' },
+    { id: 'm03', order: 3, zh: '正式報到日', en: 'On-board date' },
+    { id: 'm04', order: 4, zh: '正式就緒培訓', en: 'Official readiness' },
+    { id: 'm05', order: 5, zh: '承接首個案件', en: 'First case taken' },
+    { id: 'm06', order: 6, zh: '加入日常輪班', en: 'Join daily shift' }
   ];
 
   var COLORS = ['blue', 'sky', 'teal', 'indigo', 'amber'];
@@ -45,6 +46,15 @@
     amber: { bg: 'C77716', circle: 'D59950' }
   };
   var STATUS_ORDER = ['pending', 'in_progress', 'completed'];
+
+  function pad2(n) {
+    return n < 10 ? '0' + n : String(n);
+  }
+
+  function formatTodayDate() {
+    var d = new Date();
+    return pad2(d.getMonth() + 1) + '/' + pad2(d.getDate());
+  }
 
   var pptxLoading = null;
   function ensurePptxGen() {
@@ -106,15 +116,19 @@
       }
 
       var latest = {};
+      var msMap = {};
       var editing = false;
 
       var statusEl = $('statusText');
       var errEl = $('errBox');
       var headEl = $('boardHead');
       var bodyEl = $('boardBody');
+      var toolbarWrap = $('toolbarWrap');
       var addForm = $('addForm');
       var memberInput = $('memberInput');
       var colorSelect = $('colorSelect');
+      var addMilestoneForm = $('addMilestoneForm');
+      var milestoneInput = $('milestoneInput');
       var refreshBtn = $('refreshBtn');
       var exportPptxBtn = $('exportPptxBtn');
 
@@ -136,6 +150,51 @@
         });
       }
 
+      // 整合預設里程碑 (m01~m06) 與自訂或編輯過的里程碑紀錄
+      function getActiveMilestones() {
+        var list = [];
+        var handled = {};
+
+        DEFAULT_MILESTONES.forEach(function (def) {
+          handled[def.id] = true;
+          var rec = msMap[def.id];
+          if (rec && rec.deleted) return;
+          var customTitle = rec && rec.title ? rec.title : null;
+          list.push({
+            key: def.id,
+            order: rec && typeof rec.order === 'number' ? rec.order : def.order,
+            createdAt: rec && rec.createdAt ? rec.createdAt : def.order,
+            title: customTitle || i18n.t(def.zh, def.en),
+            rawTitle: customTitle || i18n.t(def.zh, def.en)
+          });
+        });
+
+        Object.keys(msMap).forEach(function (id) {
+          if (handled[id]) return;
+          var rec = msMap[id];
+          if (!rec || rec.deleted) return;
+          var t = rec.title || i18n.t('未命名里程碑', 'Untitled milestone');
+          list.push({
+            key: id,
+            order: typeof rec.order === 'number' ? rec.order : 100,
+            createdAt: rec.createdAt || 0,
+            title: t,
+            rawTitle: t
+          });
+        });
+
+        list.sort(function (a, b) {
+          if (a.order !== b.order) return a.order - b.order;
+          return a.createdAt - b.createdAt;
+        });
+
+        list.forEach(function (item, idx) {
+          item.num = pad2(idx + 1);
+        });
+
+        return list;
+      }
+
       function nextColor(count) {
         return COLORS[count % COLORS.length];
       }
@@ -147,6 +206,7 @@
         bodyEl.textContent = '';
 
         var ids = sortedIds();
+        var milestones = getActiveMilestones();
 
         var headRow = h('tr', {});
         headRow.appendChild(
@@ -161,92 +221,107 @@
               i18n.t('尚未新增成員（請由上方表單新增）', 'No team members yet (Add via form above)')
             )
           );
-          headEl.appendChild(headRow);
+        } else {
+          ids.forEach(function (id, idx) {
+            var rec = latest[id] || {};
+            var color = COLORS.indexOf(rec.color) >= 0 ? rec.color : COLORS[idx % COLORS.length];
+            var nameStr = rec.name || i18n.t('未命名', 'Unnamed');
+            var initial = nameStr.trim().charAt(0).toUpperCase() || '?';
 
-          MILESTONES.forEach(function (ms) {
-            var tr = h('tr', { class: 'ot-row' });
-            tr.appendChild(
-              h('td', { class: 'ot-cell-milestone px-5 py-4' },
-                h('div', { class: 'flex items-center gap-3.5' },
-                  h('span', { class: 'text-xs font-bold text-base-content/50 w-5', text: ms.num }),
-                  h('span', { class: 'text-sm md:text-base font-medium text-base-content/90', text: i18n.t(ms.zh, ms.en) })
-                )
-              )
+            var nameEl = h('span', { class: 'font-bold text-base md:text-lg truncate', text: nameStr });
+            var leftWrap = h('div', { class: 'flex items-center gap-3 min-w-0 flex-1' },
+              h('span', { class: 'ot-avatar', text: initial }),
+              nameEl
             );
+
+            var actionsWrap = h('div', { class: 'flex items-center gap-1' });
+            if (ctx.canWrite) {
+              nameEl.className += ' cursor-pointer hover:underline';
+              nameEl.title = i18n.t('點擊修改姓名', 'Click to edit name');
+              nameEl.addEventListener('click', function () {
+                startEditName(id, rec, leftWrap, nameEl);
+              });
+
+              var colorBtnTitle = i18n.t('切換標題顏色', 'Cycle header color');
+              actionsWrap.appendChild(
+                h('button', {
+                  type: 'button',
+                  class: 'btn btn-ghost btn-xs btn-circle text-white/80 hover:text-white hover:bg-white/20',
+                  title: colorBtnTitle,
+                  'aria-label': colorBtnTitle,
+                  onclick: function () {
+                    var next = COLORS[(COLORS.indexOf(color) + 1) % COLORS.length];
+                    run(sync.save(COL, id, { color: next }));
+                  }
+                }, h('i', { class: 'fa-solid fa-palette text-xs', 'aria-hidden': 'true' }))
+              );
+
+              var delTitle = i18n.t('刪除此成員', 'Remove member');
+              actionsWrap.appendChild(
+                h('button', {
+                  type: 'button',
+                  class: 'btn btn-ghost btn-xs btn-circle text-white/80 hover:text-white hover:bg-white/20',
+                  title: delTitle,
+                  'aria-label': delTitle,
+                  onclick: function () {
+                    run(sync.remove(COL, id));
+                  }
+                }, h('i', { class: 'fa-regular fa-trash-can text-xs', 'aria-hidden': 'true' }))
+              );
+            }
+
+            var th = h('th', { class: 'ot-th-member ot-header-' + color + ' px-5 py-3.5 text-left' },
+              h('div', { class: 'flex items-center justify-between gap-2' }, leftWrap, actionsWrap)
+            );
+            headRow.appendChild(th);
+          });
+        }
+
+        headEl.appendChild(headRow);
+
+        milestones.forEach(function (ms) {
+          var tr = h('tr', { class: 'ot-row group' });
+          var msTitleEl = h('span', {
+            class: 'text-sm md:text-base font-medium text-base-content/90 flex-1 min-w-0 truncate',
+            text: ms.title
+          });
+
+          var msLeftWrap = h('div', { class: 'flex items-center gap-3.5 min-w-0 flex-1' },
+            h('span', { class: 'text-xs font-bold text-base-content/50 w-5 shrink-0', text: ms.num }),
+            msTitleEl
+          );
+
+          var msCellContent = h('div', { class: 'flex items-center justify-between gap-2' }, msLeftWrap);
+
+          if (ctx.canWrite) {
+            msTitleEl.className += ' editable hover:text-primary';
+            msTitleEl.title = i18n.t('點擊編輯里程碑名稱', 'Click to edit milestone');
+            msTitleEl.addEventListener('click', function () {
+              startEditMilestone(ms, msLeftWrap, msTitleEl);
+            });
+
+            var delMsLabel = i18n.t('刪除此里程碑', 'Delete milestone');
+            var delMsBtn = h('button', {
+              type: 'button',
+              class: 'btn btn-ghost btn-xs btn-square text-base-content/40 hover:text-error opacity-60 hover:opacity-100',
+              title: delMsLabel,
+              'aria-label': delMsLabel,
+              onclick: function () {
+                deleteMilestone(ms);
+              }
+            }, h('i', { class: 'fa-regular fa-trash-can text-xs', 'aria-hidden': 'true' }));
+            msCellContent.appendChild(delMsBtn);
+          }
+
+          tr.appendChild(h('td', { class: 'ot-cell-milestone px-5 py-4' }, msCellContent));
+
+          if (!ids.length) {
             tr.appendChild(
               h('td', { class: 'ot-cell-member px-5 py-4 text-sm text-base-content/40' }, '—')
             );
             bodyEl.appendChild(tr);
-          });
-          return;
-        }
-
-        ids.forEach(function (id, idx) {
-          var rec = latest[id] || {};
-          var color = COLORS.indexOf(rec.color) >= 0 ? rec.color : COLORS[idx % COLORS.length];
-          var nameStr = rec.name || i18n.t('未命名', 'Unnamed');
-          var initial = nameStr.trim().charAt(0).toUpperCase() || '?';
-
-          var nameEl = h('span', { class: 'font-bold text-base md:text-lg truncate', text: nameStr });
-          var leftWrap = h('div', { class: 'flex items-center gap-3 min-w-0 flex-1' },
-            h('span', { class: 'ot-avatar', text: initial }),
-            nameEl
-          );
-
-          var actionsWrap = h('div', { class: 'flex items-center gap-1' });
-          if (ctx.canWrite) {
-            nameEl.className += ' cursor-pointer hover:underline';
-            nameEl.title = i18n.t('點擊修改姓名', 'Click to edit name');
-            nameEl.addEventListener('click', function () {
-              startEditName(id, rec, leftWrap, nameEl);
-            });
-
-            var colorBtnTitle = i18n.t('切換標題顏色', 'Cycle header color');
-            actionsWrap.appendChild(
-              h('button', {
-                type: 'button',
-                class: 'btn btn-ghost btn-xs btn-circle text-white/80 hover:text-white hover:bg-white/20',
-                title: colorBtnTitle,
-                'aria-label': colorBtnTitle,
-                onclick: function () {
-                  var next = COLORS[(COLORS.indexOf(color) + 1) % COLORS.length];
-                  run(sync.save(COL, id, { color: next }));
-                }
-              }, h('i', { class: 'fa-solid fa-palette text-xs', 'aria-hidden': 'true' }))
-            );
-
-            var delTitle = i18n.t('刪除此成員', 'Remove member');
-            actionsWrap.appendChild(
-              h('button', {
-                type: 'button',
-                class: 'btn btn-ghost btn-xs btn-circle text-white/80 hover:text-white hover:bg-white/20',
-                title: delTitle,
-                'aria-label': delTitle,
-                onclick: function () {
-                  run(sync.remove(COL, id));
-                }
-              }, h('i', { class: 'fa-regular fa-trash-can text-xs', 'aria-hidden': 'true' }))
-            );
+            return;
           }
-
-          var th = h('th', { class: 'ot-th-member ot-header-' + color + ' px-5 py-3.5 text-left' },
-            h('div', { class: 'flex items-center justify-between gap-2' }, leftWrap, actionsWrap)
-          );
-          headRow.appendChild(th);
-        });
-
-        headEl.appendChild(headRow);
-
-        MILESTONES.forEach(function (ms) {
-          var tr = h('tr', { class: 'ot-row' });
-          tr.appendChild(
-            h('td', { class: 'ot-cell-milestone px-5 py-4' },
-              h('div', { class: 'flex items-center gap-3.5' },
-                h('span', { class: 'text-xs font-bold text-base-content/50 w-5', text: ms.num }),
-                h('span', { class: 'text-sm md:text-base font-medium text-base-content/90', text: i18n.t(ms.zh, ms.en) })
-              )
-            )
-          );
 
           ids.forEach(function (id) {
             var rec = latest[id] || {};
@@ -260,12 +335,18 @@
               pillEl = h('button', {
                 type: 'button',
                 class: 'ot-pill ot-pill-' + st,
-                title: i18n.t('點擊切換狀態', 'Click to cycle status'),
+                title: i18n.t('點擊切換狀態（自動帶入今天日期）', 'Click to cycle status (auto-fills date)'),
                 text: pillLabel(st),
                 onclick: function () {
                   var nextSt = STATUS_ORDER[(STATUS_ORDER.indexOf(st) + 1) % STATUS_ORDER.length];
                   var patch = {};
                   patch[stKey] = nextSt;
+                  // 切換到進行中或已完成時，自動帶入當日 MM/DD；切回待處理時清空日期
+                  if (nextSt === 'pending') {
+                    patch[noteKey] = null;
+                  } else {
+                    patch[noteKey] = formatTodayDate();
+                  }
                   run(sync.save(COL, id, patch));
                 }
               });
@@ -297,6 +378,49 @@
         });
       }
 
+      function startEditMilestone(ms, container, titleEl) {
+        editing = true;
+        var input = h('input', {
+          type: 'text',
+          maxlength: '80',
+          class: 'input input-xs text-base-content flex-1 w-full',
+          value: ms.rawTitle || ''
+        });
+        container.replaceChild(input, titleEl);
+        input.focus();
+        input.select();
+        var done = false;
+        function finish(save) {
+          if (done) return;
+          done = true;
+          editing = false;
+          var v = input.value.trim().slice(0, 80);
+          if (save && v && v !== ms.rawTitle) {
+            run(sync.save(MS_COL, ms.key, {
+              title: v,
+              order: ms.order,
+              deleted: null,
+              updatedAt: Date.now()
+            }));
+          }
+          render();
+        }
+        input.addEventListener('blur', function () { finish(true); });
+        input.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') finish(true);
+          else if (e.key === 'Escape') finish(false);
+        });
+      }
+
+      function deleteMilestone(ms) {
+        var isDefault = DEFAULT_MILESTONES.some(function (d) { return d.id === ms.key; });
+        if (isDefault) {
+          run(sync.save(MS_COL, ms.key, { deleted: true, order: ms.order }));
+        } else {
+          run(sync.remove(MS_COL, ms.key));
+        }
+      }
+
       function exportToPptx() {
         errEl.hidden = true;
         exportPptxBtn.disabled = true;
@@ -310,7 +434,6 @@
 
           var fontFace = i18n.lang === 'en' ? 'Segoe UI' : 'Microsoft JhengHei';
 
-          // Top headers matching visual design
           slide.addText(i18n.t('人員準備度', 'PEOPLE READINESS'), {
             x: 0.35, y: 0.25, w: 8, h: 0.22,
             fontFace: fontFace, fontSize: 9.5, bold: true, color: '0B74CB', charSpacing: 1.5, margin: 0
@@ -324,26 +447,27 @@
             fontFace: fontFace, fontSize: 11, color: '526578', margin: 0
           });
 
-          // Table geometry
+          var milestones = getActiveMilestones();
+          var msCount = Math.max(milestones.length, 1);
+
           var tableX = 0.35;
           var tableY = 1.48;
           var totalW = 12.63;
           var msW = 3.15;
-          var headerH = 0.68;
-          var rowH = 0.72;
+          var headerH = 0.65;
+          var availBodyH = 4.42;
+          var rowH = Math.min(0.72, Math.max(0.42, availBodyH / msCount));
 
           var ids = sortedIds();
           var colCount = Math.max(ids.length, 1);
           var memberW = (totalW - msW) / colCount;
 
-          // Outer table border background
           slide.addShape(pres.ShapeType.rect, {
-            x: tableX, y: tableY, w: totalW, h: headerH + MILESTONES.length * rowH,
+            x: tableX, y: tableY, w: totalW, h: headerH + milestones.length * rowH,
             fill: { color: 'FFFFFF' },
             line: { color: 'DDE3EA', width: 1 }
           });
 
-          // Header: Milestone column
           slide.addShape(pres.ShapeType.rect, {
             x: tableX, y: tableY, w: msW, h: headerH,
             fill: { color: '162B40' },
@@ -354,7 +478,6 @@
             fontFace: fontFace, fontSize: 9.5, bold: true, color: 'FFFFFF', valign: 'middle', charSpacing: 1.2, margin: 0
           });
 
-          // Header: Member columns
           if (!ids.length) {
             slide.addShape(pres.ShapeType.rect, {
               x: tableX + msW, y: tableY, w: memberW, h: headerH,
@@ -378,7 +501,6 @@
                 line: { color: 'DDE3EA', width: 0.75 }
               });
 
-              // Avatar circle
               var avatarSize = 0.36;
               slide.addShape(pres.ShapeType.ellipse, {
                 x: cx + 0.22, y: tableY + (headerH - avatarSize) / 2, w: avatarSize, h: avatarSize,
@@ -394,11 +516,9 @@
             });
           }
 
-          // Rows: Milestones 01-06 (uniform font styling)
-          MILESTONES.forEach(function (ms, rIdx) {
+          milestones.forEach(function (ms, rIdx) {
             var ry = tableY + headerH + rIdx * rowH;
 
-            // Milestone left cell
             slide.addShape(pres.ShapeType.rect, {
               x: tableX, y: ry, w: msW, h: rowH,
               fill: { color: 'F8FAFC' },
@@ -410,7 +530,7 @@
               fontFace: fontFace, fontSize: 9, bold: true, color: '64748B', valign: 'middle', margin: 0
             });
 
-            slide.addText(i18n.t(ms.zh, ms.en), {
+            slide.addText(ms.title, {
               x: tableX + 0.58, y: ry, w: msW - 0.68, h: rowH,
               fontFace: fontFace, fontSize: 11.5, bold: false, color: '1E293B', valign: 'middle', margin: 0
             });
@@ -450,7 +570,7 @@
               }[st];
 
               var pillW = Math.min(1.05, memberW * 0.46);
-              var pillH = 0.30;
+              var pillH = Math.min(0.30, rowH * 0.68);
               var pillX = cx + 0.22;
               var pillY = ry + (rowH - pillH) / 2;
 
@@ -477,7 +597,6 @@
             });
           });
 
-          // Legend at bottom right
           var legY = 6.72;
           slide.addText(i18n.t('圖例', 'Legend'), {
             x: 9.45, y: legY, w: 0.65, h: 0.22,
@@ -501,7 +620,6 @@
             });
           });
 
-          // Footer
           slide.addText('FY27 PRIORITY  |  CUSTOMER MOMENTUM  |  PROJECT P', {
             x: 0.35, y: 7.08, w: 6, h: 0.2,
             fontFace: fontFace, fontSize: 8, bold: true, color: '64748B', margin: 0
@@ -579,7 +697,8 @@
       }
 
       if (ctx.canWrite) {
-        addForm.hidden = false;
+        if (toolbarWrap) toolbarWrap.hidden = false;
+
         addForm.addEventListener('submit', function (e) {
           e.preventDefault();
           var name = memberInput.value.trim().slice(0, 60);
@@ -595,15 +714,25 @@
             by: ctx.session ? ctx.session.name : null
           }));
         });
+
+        addMilestoneForm.addEventListener('submit', function (e) {
+          e.preventDefault();
+          var title = milestoneInput.value.trim().slice(0, 80);
+          if (!title) return;
+          milestoneInput.value = '';
+          var curMs = getActiveMilestones();
+          var maxOrder = curMs.reduce(function (m, item) {
+            return Math.max(m, item.order || 0);
+          }, 6);
+          run(sync.save(MS_COL, 'ms_' + sync.newId(), {
+            title: title,
+            order: maxOrder + 1,
+            createdAt: Date.now()
+          }));
+        });
       }
 
-      refreshBtn.addEventListener('click', function () { sub.refresh(); });
-      if (exportPptxBtn) {
-        exportPptxBtn.addEventListener('click', exportToPptx);
-      }
-      i18n.onChange(function () { render(); });
-
-      var sub = sync.subscribe(COL, {
+      var subMembers = sync.subscribe(COL, {
         onChange: function (map) {
           latest = map || {};
           if (ctx.canWrite && document.activeElement !== colorSelect) {
@@ -617,6 +746,25 @@
           statusEl.textContent = statusLabel(s);
         }
       });
+
+      var subMilestones = sync.subscribe(MS_COL, {
+        onChange: function (map) {
+          msMap = map || {};
+          render();
+        },
+        onError: showErr,
+        onStatus: function () {}
+      });
+
+      refreshBtn.addEventListener('click', function () {
+        subMembers.refresh();
+        subMilestones.refresh();
+      });
+
+      if (exportPptxBtn) {
+        exportPptxBtn.addEventListener('click', exportToPptx);
+      }
+      i18n.onChange(function () { render(); });
     }
   };
 })();
