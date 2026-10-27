@@ -36,30 +36,73 @@
 
   <!-- ═══ 擴充區開始：以下 #appRoot 內可自由修改（靜態結構寫 HTML，動態資料由 app.js 以 textContent 填入，禁止在 HTML 寫死業務資料）═══ -->
   <div id="appRoot" hidden>
-    <section class="app space-y-4">
-      <aside class="alert bg-base-100 shadow-sm items-start">
-        <i class="fa-solid fa-wand-magic-sparkles text-primary mt-1" aria-hidden="true"></i>
-        <div class="space-y-1 text-sm">
-          <div class="font-semibold" data-i18n-zh="範本已就緒！目前是預設的「筆記清單」範例" data-i18n-en="Template ready! This is the starter Notes example">範本已就緒！目前是預設的「筆記清單」範例</div>
-          <div class="text-base-content/70" data-i18n-zh="1. 先用下方表單隨手新增、點擊文字修改、再刪除一筆，確認資料庫連線與權限正常。" data-i18n-en="1. Add, click to edit, and delete a note below to verify database connection and permissions.">1. 先用下方表單隨手新增、點擊文字修改、再刪除一筆，確認資料庫連線與權限正常。</div>
-          <div class="text-base-content/70"><span data-i18n-zh="2. 回到你的 AI 工具打開本專案資料夾，直接對 AI 說：" data-i18n-en="2. Open this project folder in your AI tool and say: ">2. 回到你的 AI 工具打開本專案資料夾，直接對 AI 說：</span><code class="bg-base-200 px-1.5 py-0.5 rounded text-xs" data-i18n-zh="請先閱讀 AGENTS.md，把這個網站改成［你要做的系統］，要有［欄位與功能］。" data-i18n-en="Please read AGENTS.md and turn this site into [your app] with [fields and features].">請先閱讀 AGENTS.md，把這個網站改成［你要做的系統］，要有［欄位與功能］。</code></div>
+    <section class="ot-page space-y-5">
+      <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div class="space-y-1.5">
+          <div class="text-xs font-bold tracking-widest uppercase text-primary" data-i18n-zh="人員準備度" data-i18n-en="PEOPLE READINESS">人員準備度</div>
+          <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight text-base-content" data-i18n-zh="新人報到追蹤表" data-i18n-en="Onboarding tracker">新人報到追蹤表</h1>
+          <p class="text-sm md:text-base text-base-content/70" data-i18n-zh="單一視圖掌握每位新進團隊成員的報到前里程碑與營運上手進度。" data-i18n-en="A single view of pre-readiness milestones and operational ramp-up for each new team member.">單一視圖掌握每位新進團隊成員的報到前里程碑與營運上手進度。</p>
         </div>
-      </aside>
-      <div class="flex items-center gap-3 flex-wrap">
-        <h2 class="text-xl font-semibold flex-1" data-i18n-zh="筆記清單" data-i18n-en="Notes">筆記清單</h2>
-        <span id="statusText" class="text-sm text-base-content/70">載入中…</span>
-        <button id="refreshBtn" type="button" class="btn btn-sm">
-          <i class="fa-solid fa-rotate" aria-hidden="true"></i><span data-i18n-zh="重新整理" data-i18n-en="Refresh">重新整理</span>
-        </button>
+        <div class="flex items-center gap-2 flex-wrap">
+          <span id="statusText" class="text-xs font-medium text-base-content/60 px-2 py-1 rounded bg-base-100 shadow-xs">載入中…</span>
+          <button id="refreshBtn" type="button" class="btn btn-sm btn-ghost bg-base-100 shadow-xs">
+            <i class="fa-solid fa-rotate" aria-hidden="true"></i>
+            <span data-i18n-zh="重新整理" data-i18n-en="Refresh">重新整理</span>
+          </button>
+        </div>
       </div>
-      <form id="addForm" class="flex items-center gap-2" hidden>
-        <input id="noteInput" type="text" class="input flex-1" placeholder="輸入內容後按 Enter 或「新增」" data-i18n-placeholder-zh="輸入內容後按 Enter 或「新增」" data-i18n-placeholder-en="Type a note and press Enter or Add">
-        <button type="submit" class="btn btn-primary">
-          <i class="fa-solid fa-plus" aria-hidden="true"></i><span data-i18n-zh="新增" data-i18n-en="Add">新增</span>
-        </button>
+
+      <form id="addForm" class="card bg-base-100 shadow-xs border border-base-300/60" hidden>
+        <div class="card-body p-3 sm:p-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+          <div class="flex items-center gap-2 flex-1">
+            <i class="fa-solid fa-user-plus text-primary ml-1" aria-hidden="true"></i>
+            <input id="memberInput" type="text" maxlength="60" class="input input-sm flex-1" placeholder="輸入新進成員姓名（例如：Lynn）" data-i18n-placeholder-zh="輸入新進成員姓名（例如：Lynn）" data-i18n-placeholder-en="New member name (e.g. Lynn)">
+          </div>
+          <div class="flex items-center gap-2">
+            <select id="colorSelect" class="select select-sm w-36" aria-label="欄位配色">
+              <option value="blue" data-i18n-zh="深藍標題" data-i18n-en="Ocean Blue">深藍標題</option>
+              <option value="sky" data-i18n-zh="天藍標題" data-i18n-en="Sky Blue">天藍標題</option>
+              <option value="teal" data-i18n-zh="青綠標題" data-i18n-en="Teal Green">青綠標題</option>
+              <option value="indigo" data-i18n-zh="靛紫標題" data-i18n-en="Indigo">靛紫標題</option>
+              <option value="amber" data-i18n-zh="琥珀標題" data-i18n-en="Amber">琥珀標題</option>
+            </select>
+            <button type="submit" class="btn btn-sm btn-primary">
+              <i class="fa-solid fa-plus" aria-hidden="true"></i>
+              <span data-i18n-zh="新增成員" data-i18n-en="Add member">新增成員</span>
+            </button>
+          </div>
+        </div>
       </form>
+
       <div id="errBox" class="mws-err" hidden></div>
-      <ul id="noteList" class="list bg-base-100 rounded-box shadow-sm"></ul>
+
+      <div class="ot-board-wrap card bg-base-100 shadow-sm border border-base-300/80 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="ot-table w-full border-collapse">
+            <thead id="boardHead"></thead>
+            <tbody id="boardBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-1 text-xs text-base-content/70">
+        <div class="font-semibold tracking-wider uppercase text-base-content/60" data-i18n-zh="點擊狀態膠囊可切換狀態；點擊右側日期可輸入日期或備註" data-i18n-en="Click status pill to cycle status; click date field to edit date or note">點擊狀態膠囊可切換狀態；點擊右側日期可輸入日期或備註</div>
+        <div class="flex items-center gap-4 flex-wrap ml-auto">
+          <span class="font-bold text-base-content/80" data-i18n-zh="圖例" data-i18n-en="Legend">圖例</span>
+          <span class="inline-flex items-center gap-1.5">
+            <span class="ot-dot ot-dot-completed"></span>
+            <span data-i18n-zh="已完成" data-i18n-en="Completed">已完成</span>
+          </span>
+          <span class="inline-flex items-center gap-1.5">
+            <span class="ot-dot ot-dot-in_progress"></span>
+            <span data-i18n-zh="進行中" data-i18n-en="In progress">進行中</span>
+          </span>
+          <span class="inline-flex items-center gap-1.5">
+            <span class="ot-dot ot-dot-pending"></span>
+            <span data-i18n-zh="待處理" data-i18n-en="Pending">待處理</span>
+          </span>
+        </div>
+      </div>
     </section>
   </div>
   <!-- ═══ 擴充區結束 ═══ -->
