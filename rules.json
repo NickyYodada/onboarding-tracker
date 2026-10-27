@@ -1,0 +1,31 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "roster": {
+      ".read": "auth != null && root.child('members').child(auth.uid).child('key').exists() && root.child('roster').child(root.child('members').child(auth.uid).child('key').val()).child('active').val() === true && root.child('roster').child(root.child('members').child(auth.uid).child('key').val()).child('role').val() === 'admin'",
+      ".write": "auth != null && root.child('members').child(auth.uid).child('key').exists() && root.child('roster').child(root.child('members').child(auth.uid).child('key').val()).child('active').val() === true && root.child('roster').child(root.child('members').child(auth.uid).child('key').val()).child('role').val() === 'admin'",
+      "$key": {
+        ".read": "auth != null",
+        ".validate": "newData.hasChildren(['name', 'role', 'active'])",
+        "name": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 80" },
+        "role": { ".validate": "newData.val() === 'admin' || newData.val() === 'editor' || newData.val() === 'viewer'" },
+        "active": { ".validate": "newData.isBoolean()" },
+        "createdAt": { ".validate": "newData.isNumber()" },
+        "$other": { ".validate": false }
+      }
+    },
+    "members": {
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid && root.child('roster').child(newData.child('key').val()).child('active').val() === true",
+        ".validate": "newData.hasChildren(['key']) && newData.child('key').isString()",
+        "key": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128" },
+        "$other": { ".validate": false }
+      }
+    },
+    "data": {
+      ".read": "false || (auth != null && root.child('members').child(auth.uid).child('key').exists() && root.child('roster').child(root.child('members').child(auth.uid).child('key').val()).child('active').val() === true)",
+      ".write": "auth != null && root.child('members').child(auth.uid).child('key').exists() && root.child('roster').child(root.child('members').child(auth.uid).child('key').val()).child('active').val() === true && (root.child('roster').child(root.child('members').child(auth.uid).child('key').val()).child('role').val() === 'admin' || root.child('roster').child(root.child('members').child(auth.uid).child('key').val()).child('role').val() === 'editor')"
+    }
+  }
+}

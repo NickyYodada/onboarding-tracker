@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>載入中…</title>
+<!-- index.html：只可修改 #appRoot 內的畫面結構；<head>、頁首、#gate、#adminOverlay 由系統使用，禁止修改。 -->
+<script src="config.js"></script>
+<script src="theme.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.0.0/daisyui.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.0.0/themes.css">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.0.0"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css">
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="navbar bg-base-100 shadow-sm px-4">
+  <div class="flex-1"><span class="text-lg font-semibold" id="brand"></span></div>
+  <div id="userbar" class="flex items-center gap-2" hidden></div>
+  <div id="mwsTheme" class="flex items-center gap-1 ml-2"></div>
+</header>
+<main class="max-w-3xl mx-auto my-6 px-4">
+  <section id="gate" class="card bg-base-100 shadow-sm max-w-md mx-auto">
+    <div class="card-body">
+      <h2 class="card-title text-xl">登入</h2>
+      <p id="gateMsg" class="mws-note">載入中…</p>
+      <div id="authRoot"></div>
+      <div class="card-actions justify-end">
+        <button id="gateClose" type="button" class="btn btn-ghost btn-sm" hidden>返回</button>
+      </div>
+      <noscript>需要啟用 JavaScript 才能使用本網站。</noscript>
+    </div>
+  </section>
+
+  <!-- ═══ 擴充區開始：以下 #appRoot 內可自由修改（靜態結構寫 HTML，動態資料由 app.js 以 textContent 填入，禁止在 HTML 寫死業務資料）═══ -->
+  <div id="appRoot" hidden>
+    <section class="app space-y-4">
+      <aside class="alert bg-base-100 shadow-sm items-start">
+        <i class="fa-solid fa-wand-magic-sparkles text-primary mt-1" aria-hidden="true"></i>
+        <div class="space-y-1 text-sm">
+          <div class="font-semibold" data-i18n-zh="範本已就緒！目前是預設的「筆記清單」範例" data-i18n-en="Template ready! This is the starter Notes example">範本已就緒！目前是預設的「筆記清單」範例</div>
+          <div class="text-base-content/70" data-i18n-zh="1. 先用下方表單隨手新增、點擊文字修改、再刪除一筆，確認資料庫連線與權限正常。" data-i18n-en="1. Add, click to edit, and delete a note below to verify database connection and permissions.">1. 先用下方表單隨手新增、點擊文字修改、再刪除一筆，確認資料庫連線與權限正常。</div>
+          <div class="text-base-content/70"><span data-i18n-zh="2. 回到你的 AI 工具打開本專案資料夾，直接對 AI 說：" data-i18n-en="2. Open this project folder in your AI tool and say: ">2. 回到你的 AI 工具打開本專案資料夾，直接對 AI 說：</span><code class="bg-base-200 px-1.5 py-0.5 rounded text-xs" data-i18n-zh="請先閱讀 AGENTS.md，把這個網站改成［你要做的系統］，要有［欄位與功能］。" data-i18n-en="Please read AGENTS.md and turn this site into [your app] with [fields and features].">請先閱讀 AGENTS.md，把這個網站改成［你要做的系統］，要有［欄位與功能］。</code></div>
+        </div>
+      </aside>
+      <div class="flex items-center gap-3 flex-wrap">
+        <h2 class="text-xl font-semibold flex-1" data-i18n-zh="筆記清單" data-i18n-en="Notes">筆記清單</h2>
+        <span id="statusText" class="text-sm text-base-content/70">載入中…</span>
+        <button id="refreshBtn" type="button" class="btn btn-sm">
+          <i class="fa-solid fa-rotate" aria-hidden="true"></i><span data-i18n-zh="重新整理" data-i18n-en="Refresh">重新整理</span>
+        </button>
+      </div>
+      <form id="addForm" class="flex items-center gap-2" hidden>
+        <input id="noteInput" type="text" class="input flex-1" placeholder="輸入內容後按 Enter 或「新增」" data-i18n-placeholder-zh="輸入內容後按 Enter 或「新增」" data-i18n-placeholder-en="Type a note and press Enter or Add">
+        <button type="submit" class="btn btn-primary">
+          <i class="fa-solid fa-plus" aria-hidden="true"></i><span data-i18n-zh="新增" data-i18n-en="Add">新增</span>
+        </button>
+      </form>
+      <div id="errBox" class="mws-err" hidden></div>
+      <ul id="noteList" class="list bg-base-100 rounded-box shadow-sm"></ul>
+    </section>
+  </div>
+  <!-- ═══ 擴充區結束 ═══ -->
+</main>
+<dialog id="adminOverlay" class="modal">
+  <div class="modal-box max-w-3xl">
+    <h3 class="text-lg font-semibold mb-4">成員管理</h3>
+    <div id="adminRoot"></div>
+    <div class="modal-action">
+      <button id="adminClose" type="button" class="btn btn-ghost">關閉</button>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button aria-label="關閉">關閉</button></form>
+</dialog>
+</body>
+</html>

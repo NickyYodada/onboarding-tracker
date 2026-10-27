@@ -1,0 +1,14 @@
+/* base.css 【鎖定檔，禁止修改】：頁面骨架與 DaisyUI 共用輔助樣式。主題色票由 DaisyUI (data-theme) 提供。 */
+:root {
+  font-family: "Noto Sans TC", Inter, system-ui, -apple-system, sans-serif;
+}
+[hidden] { display: none !important; }
+body { margin: 0; min-height: 100vh; background-color: var(--color-base-200); color: var(--color-base-content); }
+
+.mws-note { font-size: .875rem; color: color-mix(in oklab, var(--color-base-content) 70%, transparent); margin: 0 0 12px; }
+.mws-err { font-size: .875rem; color: var(--color-error); margin: 0 0 12px; }
+.mws-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.mws-row:last-child { margin-bottom: 0; }
+.mws-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.mws-field > label { font-size: .875rem; font-weight: 500; }
+.mws-field > .input, .mws-field > .select { width: 100%; }
